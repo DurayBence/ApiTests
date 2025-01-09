@@ -36,7 +36,7 @@ public class Task2 {
         postBody.put("comments", "I'm starving...");
     }
 
-    public static void createResponseFormsMap(String[] args) {
+    public static void createResponseFormsMap() {
         headers.put("User-Agent", "Learning Automation");
         buildPostData();
         Response response = RestAssured
@@ -51,7 +51,8 @@ public class Task2 {
     }
 
     public static void main(String[] args) {
-        System.out.println("Header form:" + responseForms.get("header"));
-        System.out.println("Body form:" + responseForms.get("body"));
+        createResponseFormsMap();
+        System.out.println("Header form: " + responseForms.get("header"));
+        System.out.println("Body form: " + responseForms.get("body"));
     }
 }
