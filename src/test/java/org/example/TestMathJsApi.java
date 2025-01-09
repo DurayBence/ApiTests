@@ -1,5 +1,7 @@
 package org.example;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
 
@@ -45,13 +47,20 @@ public class TestMathJsApi {
         return Double.parseDouble(response.getBody().asString());
     }
 
+    private static String jsonifyExpression(String expr) {
+        HashMap<String, String> expression = new HashMap<>();
+        expression.put("expr", expr);
+        expression.put("precision", "14");
+        GsonBuilder builder = new GsonBuilder();
+        Gson gson = builder.create();
+        return gson.toJson(expression);
+    }
     private static String calculateComplexExpressionByApi(String expr) {
         headers.put("User-Agent", "Learning Automation");
-        String jsonString = "{\"expr\":\"" + expr + "\",\"precision\":14}";
         Response response = RestAssured.given()
                 .headers(headers)
                 .contentType("application/json")
-                .body(jsonString)
+                .body(jsonifyExpression(expr))
                 .post(baseURL);
         return response.jsonPath().getString("result");
     }
