@@ -29,8 +29,7 @@ public class Task1 {
     private static final String baseURL = "https://nghttp2.org/httpbin";
     private static final HashMap<String, String> headers = new HashMap<>();
 
-    //"data" > "resources" > "directGroups"
-    //"paths" > "###" > requestType > "responses" > responseCodeInt
+    //"paths" > #request > #queryType > "responses" > #responseCodeInt
     @Getter
     public class HttpBinBody {
         private Paths paths;
@@ -39,7 +38,7 @@ public class Task1 {
             private List<Request> requests;
             @Getter
             public class Request {
-                private String name;
+                private String name;                    //MAP KEY
                 private List<QueryType> queryTypes;
                 @Getter
                 public class QueryType {
