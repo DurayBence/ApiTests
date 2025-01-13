@@ -2,11 +2,11 @@ package org.example;
 
 import io.restassured.RestAssured;
 import io.restassured.mapper.ObjectMapperType;
+import io.restassured.response.Response;
 import lombok.Getter;
 
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 //Task:
 /*
@@ -28,8 +28,9 @@ The return should contain pairs like: "https://nghttp2.org/httpbin/bla/", 401
 public class Task1 {
     private static final String baseURL = "https://nghttp2.org/httpbin";
     private static final HashMap<String, String> headers = new HashMap<>();
+    private static final HashMap<String, Integer> resultMap = new HashMap<>();
 
-    //"paths" > #request > #queryType > "responses" > #responseCodeInt
+    //"paths" > #request > #queryType > "responses"
     @Getter
     public class HttpBinBody {
         private Paths paths;
@@ -38,44 +39,52 @@ public class Task1 {
             private List<Request> requests;
             @Getter
             public class Request {
-                private String name;                    //MAP KEY
+                private String name;
                 private List<QueryType> queryTypes;
                 @Getter
                 public class QueryType {
+                    private String name;
                     private List<Response> responses;
                     @Getter
                     public class Response {
-                        private int responseCode;       //MAP VALUE
+                        private int responseCode;
                     }
                 }
             }
         }
     }
 
-    public static HashMap<String, Integer> getResponses() {
+    static List<HttpBinBody.Paths.Request> getRequestList() {
         headers.put("User-Agent", "Learning Automation");
-        HashMap<String, Integer> resultMap = new HashMap<>();
-
-        List<HttpBinBody.Paths.Request> requests = RestAssured
-                .given().baseUri(baseURL).headers(headers).get("/spec.json")
+        return RestAssured.given().headers(headers).baseUri(baseURL).get("/spec.json")
                 .as(HttpBinBody.class, ObjectMapperType.GSON)
                 .getPaths().getRequests();
-        for (HttpBinBody.Paths.Request req : requests) {
-            for (HttpBinBody.Paths.Request.QueryType qt: req.getQueryTypes()) {
-                for (HttpBinBody.Paths.Request.QueryType.Response resp : qt.getResponses()) {
-                    if (resp.responseCode != 200) {
-                        resultMap.put(baseURL + req.name + " " + qt, resp.responseCode);
-                    }
-                }
+    }
+
+    static void runRequestStoreNon200Responses(HttpBinBody.Paths.Request req) {
+        for (HttpBinBody.Paths.Request.QueryType qt: req.getQueryTypes()) {
+            Response response = switch (qt.getName().toLowerCase()) {
+                case "get" -> RestAssured.given().headers(headers).baseUri(baseURL).get(req.name);
+                case "post" -> RestAssured.given().headers(headers).baseUri(baseURL).post(req.name);
+                case "put" -> RestAssured.given().headers(headers).baseUri(baseURL).put(req.name);
+                case "patch" -> RestAssured.given().headers(headers).baseUri(baseURL).patch(req.name);
+                case "delete" -> RestAssured.given().headers(headers).baseUri(baseURL).delete(req.name);
+                default -> null;
+            };
+
+            if (response != null && response.getStatusCode() != 200) {
+                resultMap.put(baseURL + req.getName() + " " + qt.getName(), response.getStatusCode());
             }
         }
-
-        return resultMap;
     }
 
     public static void main(String[] args) {
-        for (Map.Entry<String, Integer> e : getResponses().entrySet()) {
-            System.out.println(e);
+        List<HttpBinBody.Paths.Request> requests = getRequestList();
+
+        for (HttpBinBody.Paths.Request req : requests) {
+            runRequestStoreNon200Responses(req);
         }
+
+        System.out.println(resultMap.size());
     }
 }
