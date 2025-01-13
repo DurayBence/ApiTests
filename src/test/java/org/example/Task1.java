@@ -1,12 +1,17 @@
 package org.example;
 
 import io.restassured.RestAssured;
-import io.restassured.response.Response;
+import io.restassured.mapper.ObjectMapperType;
+import lombok.Getter;
 
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 //Task:
 /*
+There is a resource https://nghttp2.org/httpbin/, which describes all requests supported by the service.
+
 Investigate the service, find a way to get all service requests.
 Write a script that will find all internal url codes whose responses are not equal to 200
 
@@ -24,24 +29,54 @@ public class Task1 {
     private static final String baseURL = "https://nghttp2.org/httpbin";
     private static final HashMap<String, String> headers = new HashMap<>();
 
-    public static HashMap<String, String> getNot200Responses() {
-        headers.put("User-Agent", "Learning Automation");
-        HashMap<String, String> resultMap = new HashMap<>();
-
-        for (int i = 0; i < 5; i++) {
-            String urlSuffix = "/status/" + (i+1)*100;
-            Response response = RestAssured
-                    .given().baseUri(baseURL)
-                    .headers(headers)
-                    .get(urlSuffix);
-            if (response.statusCode() != 200) {
-                resultMap.put(baseURL + urlSuffix, String.valueOf(response.getStatusCode()));
+    //"data" > "resources" > "directGroups"
+    //"paths" > "###" > requestType > "responses" > responseCodeInt
+    @Getter
+    public class HttpBinBody {
+        private Paths paths;
+        @Getter
+        public class Paths {
+            private List<Request> requests;
+            @Getter
+            public class Request {
+                private String name;
+                private List<QueryType> queryTypes;
+                @Getter
+                public class QueryType {
+                    private List<Response> responses;
+                    @Getter
+                    public class Response {
+                        private int responseCode;       //MAP VALUE
+                    }
+                }
             }
         }
+    }
+
+    public static HashMap<String, Integer> getResponses() {
+        headers.put("User-Agent", "Learning Automation");
+        HashMap<String, Integer> resultMap = new HashMap<>();
+
+        List<HttpBinBody.Paths.Request> requests = RestAssured
+                .given().baseUri(baseURL).headers(headers).get("/spec.json")
+                .as(HttpBinBody.class, ObjectMapperType.GSON)
+                .getPaths().getRequests();
+        for (HttpBinBody.Paths.Request req : requests) {
+            for (HttpBinBody.Paths.Request.QueryType qt: req.getQueryTypes()) {
+                for (HttpBinBody.Paths.Request.QueryType.Response resp : qt.getResponses()) {
+                    if (resp.responseCode != 200) {
+                        resultMap.put(baseURL + req.name + " " + qt, resp.responseCode);
+                    }
+                }
+            }
+        }
+
         return resultMap;
     }
 
     public static void main(String[] args) {
-        System.out.println(getNot200Responses().entrySet());
+        for (Map.Entry<String, Integer> e : getResponses().entrySet()) {
+            System.out.println(e);
+        }
     }
 }
